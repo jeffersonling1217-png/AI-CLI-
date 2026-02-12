@@ -2,3 +2,5 @@ openai
 python-dotenv
 rich
 shellingham
+openpyxl
+prompt_toolkit

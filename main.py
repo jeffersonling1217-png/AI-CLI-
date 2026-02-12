@@ -2,9 +2,12 @@ import os
 import sys
 import platform
 import shellingham
-from rich.prompt import Prompt, Confirm
+from rich.prompt import Confirm
 from rich.panel import Panel
 from rich.console import Console
+from prompt_toolkit import prompt as pt_prompt
+from prompt_toolkit.history import InMemoryHistory
+from prompt_toolkit.styles import Style
 
 # 导入模块
 from config import check_env
@@ -13,6 +16,14 @@ from executor import execute_command
 from logger import log_ai_suggestion, log_ai_thinking, log_error, log_info
 
 console = Console()
+# 历史记录管理器
+history = InMemoryHistory()
+
+# 定义 prompt_toolkit 样式
+prompt_style = Style.from_dict({
+    'cwd': 'bold #00ff00',  # 对应 [bold green]
+    'arrow': '',
+})
 
 def get_shell_info() -> tuple[str, str]:
     """获取当前操作系统和 Shell 信息"""
@@ -22,6 +33,28 @@ def get_shell_info() -> tuple[str, str]:
     except Exception:
         shell_name = "unknown"
     return os_name, shell_name
+
+def read_user_input(cwd_display: str) -> str:
+    """读取用户输入 (使用 prompt_toolkit)。
+    
+    说明：使用 prompt_toolkit 接管输入，彻底解决中文输入法光标错位、
+    字符截断、无法退格等终端兼容性问题。同时支持历史记录（上下键）。
+    """
+    try:
+        # 使用 HTML 格式的 prompt，模拟之前的 rich 样式
+        # 这里的格式是 prompt_toolkit 特有的 HTML 类似语法，或者直接使用 fragments
+        # 简单起见，我们构造一个带样式的 prompt 列表
+        from prompt_toolkit.formatted_text import HTML
+        
+        return pt_prompt(
+            HTML(f"\n<cwd>{cwd_display} ></cwd> "),
+            style=prompt_style,
+            history=history
+        )
+    except EOFError:
+        return "exit"
+    except KeyboardInterrupt:
+        return ""
 
 def main():
     # 检查环境变量
@@ -39,7 +72,7 @@ def main():
         try:
             # 显示当前目录
             cwd_display = os.getcwd()
-            user_input = Prompt.ask(f"\n[bold green]{cwd_display} >[/bold green] ")
+            user_input = read_user_input(cwd_display)
             
             if user_input.lower() in ["exit", "quit", "退出"]:
                 break
