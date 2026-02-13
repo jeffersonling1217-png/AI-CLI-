@@ -50,6 +50,8 @@ def append_chat(chat: scrolledtext.ScrolledText, text: str, tag: str = None):
 def run_app():
     check_env()
     os_info, shell_info = get_shell_info()
+    if os_info == "Windows" and not ("powershell" in shell_info.lower() or "pwsh" in shell_info.lower()):
+        shell_info = "powershell.exe" # 在 Windows 打包环境下强制使用 PowerShell
 
     root = tk.Tk()
     root.title("AI CLI 小工具")
