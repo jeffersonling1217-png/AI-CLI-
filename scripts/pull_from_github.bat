@@ -1,9 +1,6 @@
 @echo off
-REM 添加 Git 到 PATH
 set "PATH=%PATH%;C:\Program Files\Git\bin"
-
-REM 切换到项目目录
-cd /d "%~dp0"
+cd /d "%~dp0.."
 
 echo 正在从 GitHub 拉取最新代码...
 git pull origin main

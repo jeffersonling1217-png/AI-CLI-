@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ai-cli"
+version = "2.0.0"
+description = "AI CLI 助手：用自然语言生成并执行命令行"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "openai",
+    "python-dotenv",
+    "rich",
+    "shellingham",
+    "openpyxl",
+    "prompt_toolkit",
+]
+
+[project.scripts]
+ai-cli = "main:main"
+ai-cli-gui = "gui:run_app"
+
+[tool.setuptools]
+py-modules = ["main", "gui", "config", "user_config", "ai_engine", "executor", "logger", "command_parser", "intent_recognizer"]

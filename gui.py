@@ -13,14 +13,69 @@ from tkinter import ttk, scrolledtext, messagebox
 # 确保项目根目录在 path 中
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from config import check_env
-from ai_engine import get_ai_command, get_ai_chat
+from config import check_env, reload_config
+from ai_engine import get_ai_command, get_ai_chat, reset_client
 from executor import execute_command
-from intent_recognizer import recognizer
+from intent_recognizer import recognizer, reset_recognizer
+from user_config import load_config, save_config
 
 # 当前待执行的命令（AI 返回后用户可选择执行或取消）
 _pending_command = None
 _pending_shell_info = None
+
+
+def show_config_dialog(parent=None) -> bool:
+    """显示配置窗口，返回 True 表示保存成功"""
+    dlg = tk.Toplevel(parent) if parent else tk.Tk()
+    dlg.title("AI 模型配置")
+    dlg.geometry("500x220")
+    dlg.resizable(True, False)
+    dlg.minsize(420, 220)
+    if parent:
+        dlg.transient(parent)
+        dlg.grab_set()
+
+    cfg = load_config()
+    ttk.Label(dlg, text="API Key:").grid(row=0, column=0, padx=10, pady=8, sticky="w")
+    key_var = tk.StringVar(value=cfg.get("OPENAI_API_KEY", ""))
+    ttk.Entry(dlg, textvariable=key_var, width=45, show="*").grid(row=0, column=1, padx=10, pady=8, sticky="ew")
+
+    ttk.Label(dlg, text="API Base URL:").grid(row=1, column=0, padx=10, pady=8, sticky="w")
+    base_var = tk.StringVar(value=cfg.get("OPENAI_API_BASE", "https://api.openai.com/v1"))
+    ttk.Entry(dlg, textvariable=base_var, width=45).grid(row=1, column=1, padx=10, pady=8, sticky="ew")
+
+    ttk.Label(dlg, text="模型名称:").grid(row=2, column=0, padx=10, pady=8, sticky="w")
+    model_var = tk.StringVar(value=cfg.get("MODEL", "gpt-4o"))
+    ttk.Entry(dlg, textvariable=model_var, width=45).grid(row=2, column=1, padx=10, pady=8, sticky="ew")
+
+    dlg.columnconfigure(1, weight=1)
+
+    ok_result = [False]
+
+    def on_ok():
+        if not key_var.get().strip():
+            messagebox.showerror("错误", "请填写 API Key", parent=dlg)
+            return
+        save_config(key_var.get().strip(), base_var.get().strip(), model_var.get().strip())
+        reload_config()
+        reset_client()
+        reset_recognizer()
+        ok_result[0] = True
+        dlg.destroy()
+
+    def on_cancel():
+        dlg.destroy()
+
+    btn_frame = ttk.Frame(dlg)
+    btn_frame.grid(row=3, column=0, columnspan=2, padx=10, pady=20, sticky="w")
+    ttk.Button(btn_frame, text="保存", command=on_ok).grid(row=0, column=0, padx=5)
+    ttk.Button(btn_frame, text="取消", command=on_cancel).grid(row=0, column=1, padx=5)
+
+    if parent:
+        dlg.wait_window()
+    else:
+        dlg.mainloop()
+    return ok_result[0]
 
 
 def get_shell_info():
@@ -48,6 +103,10 @@ def append_chat(chat: scrolledtext.ScrolledText, text: str, tag: str = None):
 
 
 def run_app():
+    # 首次运行或无配置时弹出配置窗口（.env 或 user_config 任一有 key 则跳过）
+    if not os.getenv("OPENAI_API_KEY"):
+        if not show_config_dialog():
+            return
     check_env()
     os_info, shell_info = get_shell_info()
     if os_info == "Windows" and not ("powershell" in shell_info.lower() or "pwsh" in shell_info.lower()):
@@ -57,6 +116,11 @@ def run_app():
     root.title("AI CLI 小工具")
     root.geometry("700x520")
     root.minsize(500, 400)
+
+    # 标题栏：设置按钮
+    title_frame = ttk.Frame(root, padding=5)
+    title_frame.pack(fill=tk.X)
+    ttk.Button(title_frame, text="⚙ 设置", command=lambda: show_config_dialog(root)).pack(side=tk.RIGHT)
 
     # 对话区域（只读，用于展示记录）
     chat_frame = ttk.Frame(root, padding=5)

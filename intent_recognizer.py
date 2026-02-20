@@ -1,6 +1,6 @@
 import math
 from typing import List
-from config import API_KEY, API_BASE
+import config
 from openai import OpenAI
 
 # 预设的意图种子语句
@@ -34,12 +34,17 @@ SEEDS_CHAT = [
 
 class IntentRecognizer:
     def __init__(self):
-        # 使用单独的 client 避免循环引用
-        self.client = OpenAI(api_key=API_KEY, base_url=API_BASE)
-        # 缓存种子向量
+        self._init_client()
+
+    def _init_client(self):
+        self.client = OpenAI(api_key=config.API_KEY, base_url=config.API_BASE)
         self.command_vectors = []
         self.chat_vectors = []
         self._initialized = False
+
+    def reset(self):
+        """配置变更后重置"""
+        self._init_client()
 
     def _get_embedding(self, text: str) -> List[float]:
         """调用 API 获取文本的向量表示"""
@@ -135,3 +140,7 @@ COMMAND: 要求执行具体操作、创建/修改/删除文件、运行命令、
             return "CHAT"
 
 recognizer = IntentRecognizer()
+
+
+def reset_recognizer():
+    recognizer.reset()
